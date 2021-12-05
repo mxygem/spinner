@@ -171,20 +171,21 @@ func validColor(c string) bool {
 
 // Spinner struct to hold the provided options.
 type Spinner struct {
-	mu         *sync.RWMutex                 //
-	Delay      time.Duration                 // Delay is the speed of the indicator
-	chars      []string                      // chars holds the chosen character set
-	Prefix     string                        // Prefix is the text preppended to the indicator
-	Suffix     string                        // Suffix is the text appended to the indicator
-	FinalMSG   string                        // string displayed after Stop() is called
-	lastOutput string                        // last character(set) written
-	color      func(a ...interface{}) string // default color is white
-	Writer     io.Writer                     // to make testing better, exported so users have access. Use `WithWriter` to update after initialization.
-	active     bool                          // active holds the state of the spinner
-	stopChan   chan struct{}                 // stopChan is a channel used to stop the indicator
-	HideCursor bool                          // hideCursor determines if the cursor is visible
-	PreUpdate  func(s *Spinner)              // will be triggered before every spinner update
-	PostUpdate func(s *Spinner)              // will be triggered after every spinner update
+	mu                *sync.RWMutex                 //
+	Delay             time.Duration                 // Delay is the speed of the indicator
+	chars             []string                      // chars holds the chosen character set
+	Prefix            string                        // Prefix is the text preppended to the indicator
+	Suffix            string                        // Suffix is the text appended to the indicator
+	FinalMSG          string                        // string displayed after Stop() is called
+	lastOutput        string                        // last character(set) written
+	color             func(a ...interface{}) string // default color is white
+	Writer            io.Writer                     // to make testing better, exported so users have access. Use `WithWriter` to update after initialization.
+	active            bool                          // active holds the state of the spinner
+	stopChan          chan struct{}                 // stopChan is a channel used to stop the indicator
+	HideCursor        bool                          // hideCursor determines if the cursor is visible
+	PreUpdate         func(s *Spinner)              // will be triggered before every spinner update
+	PostUpdate        func(s *Spinner)              // will be triggered after every spinner update
+	resetSuffixOnStop bool                          // control whether or not suffix value is reset when Stop is called
 }
 
 // New provides a pointer to an instance of Spinner with the supplied options.
@@ -195,7 +196,6 @@ func New(cs []string, d time.Duration, options ...Option) *Spinner {
 		color:    color.New(color.FgWhite).SprintFunc(),
 		mu:       &sync.RWMutex{},
 		Writer:   color.Output,
-		active:   false,
 		stopChan: make(chan struct{}, 1),
 	}
 
@@ -256,6 +256,12 @@ func WithWriter(w io.Writer) Option {
 		s.mu.Lock()
 		s.Writer = w
 		s.mu.Unlock()
+	}
+}
+
+func WithStopResetsSuffix(stop bool) Option {
+	return func(s *Spinner) {
+		s.resetSuffixOnStop = stop
 	}
 }
 
@@ -342,6 +348,9 @@ func (s *Spinner) Stop() {
 			} else {
 				fmt.Fprint(s.Writer, s.FinalMSG)
 			}
+		}
+		if s.resetSuffixOnStop {
+			s.Suffix = ""
 		}
 		s.stopChan <- struct{}{}
 	}

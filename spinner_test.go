@@ -106,16 +106,16 @@ func TestStop(t *testing.T) {
 
 // TestRestart will verify a spinner can be stopped and started again
 func TestRestart(t *testing.T) {
-	s := New(CharSets[4], 50*time.Millisecond)
+	s := New(CharSets[4], 40*time.Millisecond)
 	var out syncBuffer
 	s.Writer = &out
 	s.Start()
 	s.Color("cyan")
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(140 * time.Millisecond)
 	s.Restart()
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(159 * time.Millisecond)
 	s.Stop()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	out.Lock()
 	defer out.Unlock()
 	result := out.Bytes()
@@ -247,6 +247,39 @@ func TestColorError(t *testing.T) {
 func TestWithWriter(t *testing.T) {
 	s := New(CharSets[9], time.Millisecond*400, WithWriter(ioutil.Discard))
 	_ = s
+}
+
+func TestWithStopResetsSuffix(t *testing.T) {
+	s := New(CharSets[0], 20*time.Millisecond, WithStopResetsSuffix(true))
+	s.Suffix = "test suffix"
+
+	s.Start()
+	time.Sleep(10 * time.Millisecond)
+	s.Stop()
+
+	if !s.resetSuffixOnStop {
+		t.Errorf("resetSuffixOnStop not set to true. found default value of false")
+	}
+	if s.Suffix != "" {
+		t.Errorf(`suffix not cleared after stop. got=%q want=""`, s.Suffix)
+	}
+}
+
+func TestNoWithStopResetsSuffix(t *testing.T) {
+	expected := "test suffix"
+	s := New(CharSets[0], 20*time.Millisecond)
+	s.Suffix = expected
+
+	s.Start()
+	time.Sleep(10 * time.Millisecond)
+	s.Stop()
+
+	if s.resetSuffixOnStop {
+		t.Errorf("resetSuffixOnStop unexpectedly set to true. should be default value of false")
+	}
+	if s.Suffix == "" {
+		t.Errorf(`suffix unexpectedly cleared after stop. got="" want=%q`, expected)
+	}
 }
 
 /*
